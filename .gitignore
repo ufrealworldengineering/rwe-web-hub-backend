@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+build/
+dist/
+
+# Configuration & Secrets
+.env
+
+# Databases (Local testing)
+*.db
+*.sqlite3
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Alembic
+migrations/versions/*.pyc
+
+# Logs
+*.log
+
+# Supabase (if using CLI)
+.supabase/
