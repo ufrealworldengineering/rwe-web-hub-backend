@@ -15,7 +15,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from api.deps import get_db, verify_password  # reuse what's already there
+from api.deps import get_db
 from db.models import User
 import os
 

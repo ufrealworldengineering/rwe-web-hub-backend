@@ -68,11 +68,6 @@ async def me(
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
-    body: RefreshRequest, 
-    # We use the existing dependency to ensure only logged-in users can logout
     current_user: Annotated[User, Depends(get_current_active_user)],
-    db: Annotated[Session, Depends(get_db)]
 ):
-
-    
     return None
