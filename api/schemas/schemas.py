@@ -4,7 +4,7 @@ from datetime import date
 from uuid import UUID
 from enum import Enum
 
-# --- Enums (matching your SQLAlchemy enums) ---
+# --- Enums  ---
 class UserRole(str, Enum):
     president = "president"
     treasurer = "treasurer"
@@ -30,6 +30,7 @@ class UserBase(BaseModel):
     role: UserRole
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    year: Optional[AppYear] = None
 
 class UserCreate(UserBase):
     password: str
