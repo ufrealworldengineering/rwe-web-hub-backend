@@ -17,6 +17,9 @@ from .service import *
 from db.models import Application
 from db.storage import upload_resume
 
+from deps import get_current_user_with_role
+from db.models import UserRole, User
+
 router = APIRouter(prefix="/applications", tags=["applications"])
 
 # ============================================================================
@@ -92,6 +95,7 @@ def filter_applications(
     notified: Optional[bool] = Query(None, description="Filter by notification status"),
     email: Optional[str] = Query(None, description="Filter by email (partial match)"),
     major: Optional[str] = Query(None, description="Filter by major (partial match)"),
+    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     db: Session = Depends(get_db)
 ):
     """
@@ -141,6 +145,7 @@ def filter_applications(
 def get_application(
     application_id: UUID,
     include_team: bool = Query(True, description="Include team details"),
+    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer, UserRole.program_manager, UserRole.member])),
     db: Session = Depends(get_db)
 ):
     """Get a specific application by ID"""
@@ -156,6 +161,7 @@ def get_application(
 def update_application(
     application_id: UUID,
     application_update: ApplicationUpdate,
+    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     db: Session = Depends(get_db)
 ):
     """Update an application"""
@@ -173,6 +179,7 @@ def update_application_status(
     application_id: UUID,
     status: AppStatus = Body(..., embed=True),
     notified: bool = Body(False, embed=True),
+    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     db: Session = Depends(get_db)
 ):
     """Update application status and notification flag"""
@@ -187,6 +194,7 @@ def update_application_status(
 @router.delete("/{application_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_application(
     application_id: UUID,
+    current_user: User = Depends(get_current_user_with_role([UserRole.president])),
     db: Session = Depends(get_db)
 ):
     """Delete an application"""
@@ -205,6 +213,7 @@ def delete_application(
 @router.post("/notify/bulk")
 def mark_applications_notified(
     application_ids: List[UUID] = Body(..., embed=True),
+    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     db: Session = Depends(get_db)
 ):
     """Mark multiple applications as notified"""
@@ -216,6 +225,7 @@ def bulk_update_status(
     application_ids: List[UUID] = Body(..., embed=True),
     status: AppStatus = Body(..., embed=True),
     notified: bool = Body(False, embed=True),
+    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     db: Session = Depends(get_db)
 ):
     """
