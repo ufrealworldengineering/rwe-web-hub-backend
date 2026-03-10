@@ -32,3 +32,6 @@ migrations/versions/*.pyc
 
 # Supabase (if using CLI)
 .supabase/
+
+# AI tooling / local assistants
+.claude/

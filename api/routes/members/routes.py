@@ -7,14 +7,14 @@ from api.deps import get_db
 from api.schemas.schemas import MemberCreate, MemberUpdate, MemberResponse, MemberWithTeam
 from .service import * 
 
-from deps import get_current_user_with_role
+from api.deps import require_roles
 from db.models import UserRole, User
 
 router = APIRouter(prefix="/members", tags=["members"])
 
 @router.get("/", response_model=List[MemberResponse])
 def list_members(
-    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
+    current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
@@ -27,7 +27,7 @@ def list_members(
 def get_member(
     member_id: UUID,
     include_team: bool = Query(True, description="Include team details"),
-    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
+    current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     db: Session = Depends(get_db)
 ):
     """Get a specific member by ID"""
@@ -42,7 +42,7 @@ def get_member(
 @router.get("/email/{email}", response_model=MemberResponse)
 def get_member_by_email(
     email: str,
-    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
+    current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     db: Session = Depends(get_db)
 ):
     """Get a member by email"""
@@ -57,7 +57,7 @@ def get_member_by_email(
 @router.get("/team/{team_id}", response_model=List[MemberResponse])
 def get_members_by_team(
     team_id: UUID,
-    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
+    current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     db: Session = Depends(get_db)
 ):
     """Get all members for a specific team"""
@@ -67,7 +67,7 @@ def get_members_by_team(
 @router.post("/", response_model=MemberResponse, status_code=status.HTTP_201_CREATED)
 def create_member(
     member: MemberCreate,
-    current_user: User = Depends(get_current_user_with_role([UserRole.president])),
+    current_user: User = Depends(require_roles([UserRole.president])),
     db: Session = Depends(get_db)
 ):
     """Create a new member"""
@@ -78,7 +78,7 @@ def create_member(
 def update_member(
     member_id: UUID,
     member_update: MemberUpdate,
-    current_user: User = Depends(get_current_user_with_role([UserRole.president])),
+    current_user: User = Depends(require_roles([UserRole.president])),
     db: Session = Depends(get_db)
 ):
     """Update a member"""
@@ -94,7 +94,7 @@ def update_member(
 @router.delete("/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_member(
     member_id: UUID,
-    current_user: User = Depends(get_current_user_with_role([UserRole.president])),
+    current_user: User = Depends(require_roles([UserRole.president])),
     db: Session = Depends(get_db)
 ):
     """Delete a member"""

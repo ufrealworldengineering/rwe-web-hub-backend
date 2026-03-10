@@ -7,14 +7,14 @@ from api.deps import get_db
 from api.schemas.schemas import TeamCreate, TeamUpdate, TeamResponse, TeamWithProgram
 from .service import * 
 
-from deps import get_current_user_with_role
+from api.deps import require_roles
 from db.models import UserRole, User
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
 @router.get("/", response_model=List[TeamResponse])
 def list_teams(
-    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer])),
+    current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer])),
     skip: int = 0,
     limit: int = 100,
     active_only: bool = Query(False, description="Filter to only active teams"),
@@ -27,7 +27,7 @@ def list_teams(
 @router.get("/{team_id}", response_model=TeamWithProgram)
 def get_team(
     team_id: UUID,
-    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer, UserRole.program_manager, UserRole.member])),
+    current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer, UserRole.program_manager, UserRole.member])),
     include_program: bool = Query(True, description="Include program details"),
     db: Session = Depends(get_db)
 ):
@@ -43,7 +43,7 @@ def get_team(
 @router.get("/program/{program_id}", response_model=List[TeamResponse])
 def get_teams_by_program(
     program_id: UUID,
-    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
+    current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     active_only: bool = Query(False, description="Filter to only active teams"),
     db: Session = Depends(get_db)
 ):
@@ -54,7 +54,7 @@ def get_teams_by_program(
 @router.post("/", response_model=TeamResponse, status_code=status.HTTP_201_CREATED)
 def create_team(
     team: TeamCreate,
-    current_user: User = Depends(get_current_user_with_role([UserRole.president])),
+    current_user: User = Depends(require_roles([UserRole.president])),
     db: Session = Depends(get_db)
 ):
     """Create a new team"""
@@ -65,7 +65,7 @@ def create_team(
 def update_team(
     team_id: UUID,
     team_update: TeamUpdate,
-    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.program_manager])),
+    current_user: User = Depends(require_roles([UserRole.president, UserRole.program_manager])),
     db: Session = Depends(get_db)
 ):
     """Update a team"""
@@ -81,7 +81,7 @@ def update_team(
 @router.delete("/{team_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_team(
     team_id: UUID,
-    current_user: User = Depends(get_current_user_with_role([UserRole.president])),
+    current_user: User = Depends(require_roles([UserRole.president])),
     db: Session = Depends(get_db)
 ):
     """Delete a team"""

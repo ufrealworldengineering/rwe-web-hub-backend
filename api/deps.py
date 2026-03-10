@@ -1,6 +1,7 @@
 import hashlib
 import base64
-from typing import Generator, List
+from collections.abc import Generator
+from typing import Callable, Iterable
 
 import bcrypt
 from db.session import SessionLocal
@@ -12,13 +13,9 @@ def _prehash(password: str) -> bytes:
     """
     digest = hashlib.sha256(password.encode("utf-8")).digest()
     return base64.b64encode(digest)  # 44 bytes, safe for bcrypt
+from fastapi import Depends, HTTPException
 
-from passlib.context import CryptContext
-
-from fastapi import HTTPException, Depends
-from db.models import UserRole, User
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from db.models import User, UserRole
 
 def get_db() -> Generator:
     db = SessionLocal()
@@ -39,10 +36,21 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(_prehash(plain_password), hashed_password.encode("utf-8"))
 
 
-async def get_current_user_with_role(
-    required_roles: List[UserRole],
-    current_user: User = Depends(get_current_user)
-) -> User:
-    if current_user.role not in required_roles:
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
-    return current_user
+def require_roles(required_roles: Iterable[UserRole]) -> Callable[..., User]:
+    """
+    Factory for role-based access control.
+
+    Usage:
+      current_user: User = Depends(require_roles([UserRole.president, ...]))
+    """
+    required = set(required_roles)
+
+    # Import inside to avoid circular import: api.core.security -> api.deps(get_db)
+    from api.core.security import get_current_active_user
+
+    def _dep(current_user: User = Depends(get_current_active_user)) -> User:
+        if current_user.role not in required:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        return current_user
+
+    return _dep

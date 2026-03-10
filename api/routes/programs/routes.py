@@ -7,14 +7,14 @@ from api.deps import get_db
 from api.schemas.schemas import ProgramCreate, ProgramUpdate, ProgramResponse, ProgramWithManager
 from .service import *
 
-from deps import get_current_user_with_role
+from api.deps import require_roles
 from db.models import UserRole, User
 
 router = APIRouter(prefix="/programs", tags=["programs"])
 
 @router.get("/", response_model=List[ProgramResponse])
 async def list_programs(
-    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer])),
+    current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer])),
     skip: int = 0,
     limit: int = 100,
     active_only: bool = Query(False, description="Filter to only active programs"),
@@ -27,7 +27,7 @@ async def list_programs(
 @router.get("/{program_id}", response_model=ProgramWithManager)
 def get_program(
     program_id: UUID,
-    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
+    current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     include_manager: bool = Query(True, description="Include manager details"),
     db: Session = Depends(get_db)
 ):
@@ -43,7 +43,7 @@ def get_program(
 @router.get("/manager/{manager_id}", response_model=List[ProgramResponse])
 def get_programs_by_manager(
     manager_id: UUID,
-    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
+    current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     db: Session = Depends(get_db)
 ):
     """Get all programs managed by a specific user"""
@@ -53,7 +53,7 @@ def get_programs_by_manager(
 @router.post("/", response_model=ProgramResponse, status_code=status.HTTP_201_CREATED)
 def create_program(
     program: ProgramCreate,
-    current_user: User = Depends(get_current_user_with_role([UserRole.president])),
+    current_user: User = Depends(require_roles([UserRole.president])),
     db: Session = Depends(get_db)
 ):
     """Create a new program"""
@@ -64,7 +64,7 @@ def create_program(
 def update_program(
     program_id: UUID,
     program_update: ProgramUpdate,
-    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
+    current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     db: Session = Depends(get_db)
 ):
     """Update a program"""
@@ -81,7 +81,7 @@ def update_program(
 @router.delete("/{program_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_program(
     program_id: UUID,
-    current_user: User = Depends(get_current_user_with_role([UserRole.president])),
+    current_user: User = Depends(require_roles([UserRole.president])),
     db: Session = Depends(get_db)
 ):
     """Delete a program"""
