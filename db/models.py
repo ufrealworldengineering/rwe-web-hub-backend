@@ -41,7 +41,7 @@ class User(Base):
     last_name: Mapped[Optional[str]] = mapped_column(String)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String)
-    year: Mapped[AppYear] = mapped_column(Enum(AppYear))
+    year: Mapped[Optional[AppYear]] = mapped_column(Enum(AppYear), nullable=True)
 
     managed_programs: Mapped[List["Program"]] = relationship("Program", back_populates="manager_rel")
 
@@ -94,5 +94,5 @@ class Application(Base):
     notified: Mapped[bool] = mapped_column(Boolean, default=False)
     resume: Mapped[Optional[str]] = mapped_column(String) # URL to file storage
     metadata_json: Mapped[Optional[dict]] = mapped_column(JSONB)
-
+    #TODO: add date applied 
     team_rel: Mapped["Team"] = relationship("Team", back_populates="applications")
