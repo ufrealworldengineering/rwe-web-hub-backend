@@ -7,12 +7,16 @@ from api.deps import get_db
 from api.schemas.schemas import UserCreate, UserUpdate, UserResponse
 from .service import * 
 
+from deps import get_current_user_with_role
+from db.models import UserRole, User
+
 router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/", response_model=List[UserResponse])
 def list_users(
     skip: int = 0,
     limit: int = 100,
+    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer])),
     db: Session = Depends(get_db)
 ):
     """Get all users"""
@@ -22,6 +26,7 @@ def list_users(
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user(
     user_id: UUID,
+    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer])),
     db: Session = Depends(get_db)
 ):
     """Get a specific user by ID"""
@@ -36,6 +41,7 @@ def get_user(
 @router.get("/email/{email}", response_model=UserResponse)
 def get_user_by_email(
     email: str,
+    current_user: User = Depends(get_current_user_with_role([UserRole.president, UserRole.treasurer])),
     db: Session = Depends(get_db)
 ):
     """Get a user by email"""
@@ -50,6 +56,7 @@ def get_user_by_email(
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(
     user: UserCreate,
+    current_user: User = Depends(get_current_user_with_role([UserRole.president])),
     db: Session = Depends(get_db)
 ):
     """Create a new user"""
@@ -59,6 +66,7 @@ def create_user(
 def update_user(
     user_id: UUID,
     user_update: UserUpdate,
+    current_user: User = Depends(get_current_user_with_role([UserRole.president])),
     db: Session = Depends(get_db)
 ):
     """Update a user"""
@@ -73,6 +81,7 @@ def update_user(
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(
     user_id: UUID,
+    current_user: User = Depends(get_current_user_with_role([UserRole.president])),
     db: Session = Depends(get_db)
 ):
     """Delete a user"""
