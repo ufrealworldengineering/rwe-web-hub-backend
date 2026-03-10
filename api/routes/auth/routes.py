@@ -20,9 +20,9 @@ from api.core.security import (
     get_current_active_user,
     verify_token,
 )
-from .service import authenticate_user
+from .service import authenticate_user, register_preentered_user
 from db.models import User
-from .schemas import Token, AccessToken, RefreshRequest
+from .schemas import Token, AccessToken, RefreshRequest, UserRegister
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -71,3 +71,11 @@ async def logout(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     return None
+
+@router.post("/register", response_model=UserResponse)
+def register(
+    registration_data: UserRegister,
+    db: Session = Depends(get_db)
+):
+    """Allows a pre-entered user to set their password and activate their account."""
+    return register_preentered_user(db, registration_data)

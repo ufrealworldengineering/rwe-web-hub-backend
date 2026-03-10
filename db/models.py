@@ -94,5 +94,5 @@ class Application(Base):
     notified: Mapped[bool] = mapped_column(Boolean, default=False)
     resume: Mapped[Optional[str]] = mapped_column(String) # URL to file storage
     metadata_json: Mapped[Optional[dict]] = mapped_column(JSONB)
-
+    #TODO: add date applied 
     team_rel: Mapped["Team"] = relationship("Team", back_populates="applications")

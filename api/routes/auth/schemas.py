@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 class Token(BaseModel):
     access_token: str
@@ -14,3 +14,6 @@ class AccessToken(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+class UserRegister(BaseModel):
+    email: EmailStr
+    password: str  
