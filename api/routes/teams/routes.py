@@ -3,11 +3,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
-from api.deps import get_db
+from api.deps import get_db, require_roles
 from api.schemas.schemas import TeamCreate, TeamUpdate, TeamResponse, TeamWithProgram
-from .service import * 
-
-from api.deps import require_roles
+from . import service as team_service
 from db.models import UserRole, User
 
 router = APIRouter(prefix="/teams", tags=["teams"])
@@ -21,7 +19,7 @@ def list_teams(
     db: Session = Depends(get_db)
 ):
     """Get all teams"""
-    teams = get_teams(db, skip=skip, limit=limit, active_only=active_only)
+    teams = team_service.get_teams(db, skip=skip, limit=limit, active_only=active_only)
     return teams
 
 @router.get("/{team_id}", response_model=TeamWithProgram)
@@ -32,7 +30,7 @@ def get_team(
     db: Session = Depends(get_db)
 ):
     """Get a specific team by ID"""
-    team = get_team(db, team_id, include_program=include_program)
+    team = team_service.get_team(db, team_id, include_program=include_program)
     if not team:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -48,7 +46,7 @@ def get_teams_by_program(
     db: Session = Depends(get_db)
 ):
     """Get all teams for a specific program"""
-    teams = get_teams_by_program(db, program_id, active_only=active_only)
+    teams = team_service.get_teams_by_program(db, program_id, active_only=active_only)
     return teams
 
 @router.post("/", response_model=TeamResponse, status_code=status.HTTP_201_CREATED)
@@ -59,7 +57,7 @@ def create_team(
 ):
     """Create a new team"""
     team_data = team.model_dump()
-    return create_team(db, team_data)
+    return team_service.create_team(db, team_data)
 
 @router.patch("/{team_id}", response_model=TeamResponse)
 def update_team(
@@ -70,7 +68,7 @@ def update_team(
 ):
     """Update a team"""
     update_data = team_update.model_dump(exclude_unset=True)
-    team = update_team(db, team_id, update_data)
+    team = team_service.update_team(db, team_id, update_data)
     if not team:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -85,7 +83,7 @@ def delete_team(
     db: Session = Depends(get_db)
 ):
     """Delete a team"""
-    success = delete_team(db, team_id)
+    success = team_service.delete_team(db, team_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
