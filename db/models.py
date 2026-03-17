@@ -40,7 +40,8 @@ class User(Base):
     first_name: Mapped[Optional[str]] = mapped_column(String)
     last_name: Mapped[Optional[str]] = mapped_column(String)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
-    password_hash: Mapped[str] = mapped_column(String)
+    password_hash: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     year: Mapped[Optional[AppYear]] = mapped_column(Enum(AppYear), nullable=True)
 
     managed_programs: Mapped[List["Program"]] = relationship("Program", back_populates="manager_rel")
@@ -64,6 +65,7 @@ class Team(Base):
     program: Mapped[uuid.UUID] = mapped_column(ForeignKey("programs.id", ondelete="CASCADE"))
     created_at: Mapped[date] = mapped_column(Date, default=date.today)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    application_template: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
 
     program_rel: Mapped["Program"] = relationship("Program", back_populates="teams")
     members: Mapped[List["Member"]] = relationship("Member", back_populates="team_rel")
@@ -96,3 +98,4 @@ class Application(Base):
     metadata_json: Mapped[Optional[dict]] = mapped_column(JSONB)
     #TODO: add date applied 
     team_rel: Mapped["Team"] = relationship("Team", back_populates="applications")
+
