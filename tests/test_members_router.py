@@ -36,3 +36,16 @@ def test_members_list_forbids_member(client, seeded_data):
     assert res.status_code == 403
     log_passed("members list forbids member")
 
+
+def test_members_list_scopes_program_manager_to_managed_program(client, seeded_data):
+    pm = seeded_data["program_manager"]
+    res = client.get(
+        "/api/members/",
+        headers=auth_header_for_email(pm.email),
+    )
+    assert res.status_code == 200
+    emails = {m["email"] for m in res.json()}
+    assert "pm.member@example.com" in emails
+    assert "pres.member@example.com" not in emails
+    log_passed("members list scopes program manager")
+

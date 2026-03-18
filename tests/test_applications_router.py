@@ -63,10 +63,13 @@ def test_applications_flow_public_apply_and_admin_filter(client, seeded_data):
         "team_id": str(team.id),
         "year": AppYear.first.value,
         "major": "Engineering",
+        "answers_json": '{"why_join":"I want to build real projects","background":"Some projects and clubs"}',
     }
 
     apply_res = client.post("/api/applications/apply", data=data, files=files)
     assert apply_res.status_code == 201
+    created = apply_res.json()
+    assert created["metadata_json"]["answers"]["why_join"] == "I want to build real projects"
 
     filter_res = client.get(
         "/api/applications/filter?email=applicant@example.com",

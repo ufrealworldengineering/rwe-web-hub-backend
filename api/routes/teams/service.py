@@ -2,7 +2,7 @@ from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session, joinedload
 
-from db.models import Team
+from db.models import Program, Team, User
 
 def get_team(db: Session, team_id: UUID, include_program: bool = False) -> Optional[Team]:
     """Get a single team by ID"""
@@ -16,7 +16,8 @@ def get_teams(
     skip: int = 0,
     limit: int = 100,
     active_only: bool = False,
-    include_program: bool = False
+    include_program: bool = False,
+    manager_user: Optional[User] = None,
 ) -> List[Team]:
     """Get all teams with pagination"""
     query = db.query(Team)
@@ -24,6 +25,9 @@ def get_teams(
     if include_program:
         query = query.options(joinedload(Team.program_rel))
     
+    if manager_user is not None:
+        query = query.join(Team.program_rel).filter(Program.manager == manager_user.id)
+
     if active_only:
         query = query.filter(Team.active == True)
     

@@ -39,6 +39,19 @@ def test_teams_list_forbids_member(client, seeded_data):
     log_passed("teams list forbids member")
 
 
+def test_teams_list_scopes_program_manager_to_managed_program(client, seeded_data):
+    pm = seeded_data["program_manager"]
+    res = client.get(
+        "/api/teams/",
+        headers=auth_header_for_email(pm.email),
+    )
+    assert res.status_code == 200
+    ids = {t["id"] for t in res.json()}
+    assert str(seeded_data["pm_team"].id) in ids
+    assert str(seeded_data["pres_team"].id) not in ids
+    log_passed("teams list scopes program manager")
+
+
 def test_get_team_allows_member_role(client, seeded_data, db_session):
     """
     Ensures a user with member role can access `/api/teams/{team_id}` (per RBAC config).

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from api.deps import get_db
 from api.schemas.schemas import MemberCreate, MemberUpdate, MemberResponse, MemberWithTeam
-from .service import * 
+from . import service as member_service
 
 from api.deps import require_roles
 from db.models import UserRole, User
@@ -20,7 +20,12 @@ def list_members(
     db: Session = Depends(get_db)
 ):
     """Get all members"""
-    members = get_members(db, skip=skip, limit=limit)
+    members = member_service.get_members(
+        db,
+        skip=skip,
+        limit=limit,
+        program_manager_user_id=current_user.id if current_user.role == UserRole.program_manager else None,
+    )
     return members
 
 @router.get("/{member_id}", response_model=MemberWithTeam)
@@ -31,12 +36,16 @@ def get_member(
     db: Session = Depends(get_db)
 ):
     """Get a specific member by ID"""
-    member = get_member(db, member_id, include_team=include_team)
+    member = member_service.get_member(db, member_id, include_team=include_team)
     if not member:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Member not found"
         )
+    if current_user.role == UserRole.program_manager:
+        allowed = member_service.get_members_by_team(db, member.team, program_manager_user_id=current_user.id)
+        if not any(m.id == member.id for m in allowed):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
     return member
 
 @router.get("/email/{email}", response_model=MemberResponse)
@@ -46,12 +55,16 @@ def get_member_by_email(
     db: Session = Depends(get_db)
 ):
     """Get a member by email"""
-    member = get_member_by_email(db, email)
+    member = member_service.get_member_by_email(db, email)
     if not member:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Member not found"
         )
+    if current_user.role == UserRole.program_manager:
+        allowed = member_service.get_members_by_team(db, member.team, program_manager_user_id=current_user.id)
+        if not any(m.id == member.id for m in allowed):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
     return member
 
 @router.get("/team/{team_id}", response_model=List[MemberResponse])
@@ -61,7 +74,11 @@ def get_members_by_team(
     db: Session = Depends(get_db)
 ):
     """Get all members for a specific team"""
-    members = get_members_by_team(db, team_id)
+    members = member_service.get_members_by_team(
+        db,
+        team_id,
+        program_manager_user_id=current_user.id if current_user.role == UserRole.program_manager else None,
+    )
     return members
 
 @router.post("/", response_model=MemberResponse, status_code=status.HTTP_201_CREATED)
@@ -72,7 +89,7 @@ def create_member(
 ):
     """Create a new member"""
     member_data = member.model_dump()
-    return create_member(db, member_data)
+    return member_service.create_member(db, member_data)
 
 @router.patch("/{member_id}", response_model=MemberResponse)
 def update_member(
@@ -83,7 +100,7 @@ def update_member(
 ):
     """Update a member"""
     update_data = member_update.model_dump(exclude_unset=True)
-    member = update_member(db, member_id, update_data)
+    member = member_service.update_member(db, member_id, update_data)
     if not member:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -98,7 +115,7 @@ def delete_member(
     db: Session = Depends(get_db)
 ):
     """Delete a member"""
-    success = delete_member(db, member_id)
+    success = member_service.delete_member(db, member_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -19,8 +19,8 @@ def test_public_get_returns_404_when_not_configured(client, seeded_data):
     """
     Ensures the public GET endpoint returns 404 when a team has no application template.
     """
-    team = seeded_data["team"]
-    res = client.get(f"/api/team-applications/team/{team.id}")
+    team = seeded_data["pres_team"]
+    res = client.get(f"/api/teams/{team.id}/application-template")
     assert res.status_code == 404
     log_passed("public get returns 404 when not configured")
 
@@ -52,7 +52,7 @@ def test_president_can_upsert_and_public_can_read(client, seeded_data):
     }
 
     put_res = client.put(
-        f"/api/team-applications/team/{team.id}",
+        f"/api/teams/{team.id}/application-template",
         headers=auth_header_for_email(president.email),
         json=put_body,
     )
@@ -61,7 +61,7 @@ def test_president_can_upsert_and_public_can_read(client, seeded_data):
     assert data["team_id"] == str(team.id)
     assert len(data["questions"]) == 2
 
-    get_res = client.get(f"/api/team-applications/team/{team.id}")
+    get_res = client.get(f"/api/teams/{team.id}/application-template")
     assert get_res.status_code == 200
     get_data = get_res.json()
     assert [q["id"] for q in get_data["questions"]] == ["why", "exp"]
@@ -76,7 +76,7 @@ def test_member_cannot_upsert_template(client, seeded_data):
     member = seeded_data["member"]
 
     res = client.put(
-        f"/api/team-applications/team/{team.id}",
+        f"/api/teams/{team.id}/application-template",
         headers=auth_header_for_email(member.email),
         json={"questions": [{"id": "q1", "question": "Q?", "type": "input", "required": True}]},
     )
@@ -98,7 +98,7 @@ def test_validation_rejects_duplicate_question_ids(client, seeded_data):
         ]
     }
     res = client.put(
-        f"/api/team-applications/team/{team.id}",
+        f"/api/teams/{team.id}/application-template",
         headers=auth_header_for_email(president.email),
         json=body,
     )
@@ -125,7 +125,7 @@ def test_validation_rejects_multiple_choice_without_options(client, seeded_data)
         ]
     }
     res = client.put(
-        f"/api/team-applications/team/{team.id}",
+        f"/api/teams/{team.id}/application-template",
         headers=auth_header_for_email(president.email),
         json=body,
     )
@@ -143,24 +143,24 @@ def test_only_president_can_delete_template(client, seeded_data):
 
     # Seed a template first.
     client.put(
-        f"/api/team-applications/team/{team.id}",
+        f"/api/teams/{team.id}/application-template",
         headers=auth_header_for_email(president.email),
         json={"questions": [{"id": "q1", "question": "Q?", "type": "input", "required": True}]},
     )
 
     member_del = client.delete(
-        f"/api/team-applications/team/{team.id}",
+        f"/api/teams/{team.id}/application-template",
         headers=auth_header_for_email(member.email),
     )
     assert member_del.status_code == 403
 
     pres_del = client.delete(
-        f"/api/team-applications/team/{team.id}",
+        f"/api/teams/{team.id}/application-template",
         headers=auth_header_for_email(president.email),
     )
     assert pres_del.status_code == 204
 
-    after = client.get(f"/api/team-applications/team/{team.id}")
+    after = client.get(f"/api/teams/{team.id}/application-template")
     assert after.status_code == 404
     log_passed("only president can delete template")
 

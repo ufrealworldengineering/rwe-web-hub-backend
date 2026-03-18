@@ -7,19 +7,27 @@ from api.deps import get_db, require_roles
 from api.schemas.schemas import TeamCreate, TeamUpdate, TeamResponse, TeamWithProgram
 from . import service as team_service
 from db.models import UserRole, User
+from api.routes.team_applications.schemas import TeamApplicationResponse, TeamApplicationUpdate, unpack_metadata
+from api.routes.team_applications.service import delete_for_team, get_template_for_team, upsert_for_team
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
 @router.get("/", response_model=List[TeamResponse])
 def list_teams(
-    current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer])),
+    current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     skip: int = 0,
     limit: int = 100,
     active_only: bool = Query(False, description="Filter to only active teams"),
     db: Session = Depends(get_db)
 ):
     """Get all teams"""
-    teams = team_service.get_teams(db, skip=skip, limit=limit, active_only=active_only)
+    teams = team_service.get_teams(
+        db,
+        skip=skip,
+        limit=limit,
+        active_only=active_only,
+        manager_user=current_user if current_user.role == UserRole.program_manager else None,
+    )
     return teams
 
 @router.get("/{team_id}", response_model=TeamWithProgram)
@@ -89,4 +97,54 @@ def delete_team(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Team not found"
         )
+    return None
+
+
+@router.get("/{team_id}/application-template", response_model=TeamApplicationResponse)
+def get_team_application_template(team_id: UUID, db: Session = Depends(get_db)) -> TeamApplicationResponse:
+    """
+    Public endpoint to fetch a team's application template/questions.
+    Returns 404 if the team has not configured an application yet.
+    """
+    metadata_json = get_template_for_team(db, team_id)
+    if not metadata_json:
+        raise HTTPException(status_code=404, detail="Team application not found")
+    return TeamApplicationResponse(team_id=team_id, questions=unpack_metadata(metadata_json))
+
+
+@router.put(
+    "/{team_id}/application-template",
+    response_model=TeamApplicationResponse,
+    status_code=status.HTTP_200_OK,
+)
+def upsert_team_application_template(
+    team_id: UUID,
+    body: TeamApplicationUpdate,
+    current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
+    db: Session = Depends(get_db),
+) -> TeamApplicationResponse:
+    """
+    Admin endpoint: create or replace the application questions for a team.
+    """
+    if body.questions is None:
+        raise HTTPException(status_code=422, detail="questions is required")
+
+    team = upsert_for_team(db, team_id=team_id, questions=body.questions)
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    return TeamApplicationResponse(team_id=team_id, questions=body.questions)
+
+
+@router.delete("/{team_id}/application-template", status_code=status.HTTP_204_NO_CONTENT)
+def delete_team_application_template(
+    team_id: UUID,
+    current_user: User = Depends(require_roles([UserRole.president])),
+    db: Session = Depends(get_db),
+):
+    """
+    Admin endpoint: delete a team's application template.
+    """
+    ok = delete_for_team(db, team_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Team application not found")
     return None

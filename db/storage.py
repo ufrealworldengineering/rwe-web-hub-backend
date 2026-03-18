@@ -54,7 +54,7 @@ async def upload_resume(file_content: bytes, original_filename: str) -> str:
     # If Supabase isn't configured, just return a fake URL.
     if supabase_storage is None:
         base = os.getenv("LOCAL_RESUME_BASE_URL", "https://example.com")
-        return f"{base}/{RESUME_BUCKET}/{path}"
+        return f"{base}/storage/v1/object/public/{RESUME_BUCKET}/{path}"
 
     try:
         supabase_storage.storage.from_(RESUME_BUCKET).upload(
