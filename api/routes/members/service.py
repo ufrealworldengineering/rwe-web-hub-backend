@@ -2,7 +2,7 @@ from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session, joinedload
 
-from db.models import Member
+from db.models import Member, Program, Team
 
 def get_member(db: Session, member_id: UUID, include_team: bool = False) -> Optional[Member]:
     """Get a single member by ID"""
@@ -19,19 +19,34 @@ def get_members(
     db: Session,
     skip: int = 0,
     limit: int = 100,
-    include_team: bool = False
+    include_team: bool = False,
+    program_manager_user_id: Optional[UUID] = None,
 ) -> List[Member]:
     """Get all members with pagination"""
     query = db.query(Member)
     
     if include_team:
         query = query.options(joinedload(Member.team_rel))
+
+    if program_manager_user_id is not None:
+        query = (
+            query.join(Member.team_rel)
+            .join(Team.program_rel)
+            .filter(Program.manager == program_manager_user_id)
+        )
     
     return query.offset(skip).limit(limit).all()
 
-def get_members_by_team(db: Session, team_id: UUID) -> List[Member]:
+def get_members_by_team(db: Session, team_id: UUID, program_manager_user_id: Optional[UUID] = None) -> List[Member]:
     """Get all members for a specific team"""
-    return db.query(Member).filter(Member.team == team_id).all()
+    query = db.query(Member).filter(Member.team == team_id)
+    if program_manager_user_id is not None:
+        query = (
+            query.join(Member.team_rel)
+            .join(Team.program_rel)
+            .filter(Program.manager == program_manager_user_id)
+        )
+    return query.all()
 
 def create_member(db: Session, member_data: dict) -> Member:
     """Create a new member"""

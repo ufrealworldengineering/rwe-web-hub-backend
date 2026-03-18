@@ -1,6 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 import uuid
+import json
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
@@ -16,6 +17,8 @@ from api.schemas.schemas import (
 from .service import *
 from db.models import Application
 from db.storage import upload_resume
+from db.models import Team
+from api.routes.team_applications.schemas import unpack_metadata, QuestionType
 
 from api.deps import require_roles
 from db.models import UserRole, User
@@ -35,6 +38,7 @@ async def apply_to_team(
     year: str = Form(...),
     major: str = Form(...),
     resume: UploadFile = File(...),
+    answers_json: Optional[str] = Form(None, description="JSON object mapping question_id -> answer"),
     db: Session = Depends(get_db)
 ):
     """
@@ -54,19 +58,61 @@ async def apply_to_team(
         # 2. Get the public URL for the stored file
         resume_url = await upload_resume(file_content, resume.filename)
         
-        # 3. Create application data
+        # 3. Validate and capture template answers (if configured for team)
+        team_uuid = UUID(team_id)
+        team = db.query(Team).filter(Team.id == team_uuid).first()
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        answers: dict = {}
+        if answers_json:
+            try:
+                parsed = json.loads(answers_json)
+                if not isinstance(parsed, dict):
+                    raise ValueError("answers_json must be a JSON object")
+                answers = parsed
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Invalid answers_json: {e}")
+
+        template = team.application_template or {}
+        questions = unpack_metadata(template) if template else []
+        if questions:
+            # Auto-fill template "year" question from the required form field if omitted.
+            if "year" not in answers:
+                answers["year"] = year
+
+            missing_required = [q.id for q in questions if q.required and q.id not in answers]
+            if missing_required:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Missing required answers: {', '.join(missing_required)}",
+                )
+
+            for q in questions:
+                if q.id not in answers:
+                    continue
+                a = answers[q.id]
+                if q.type == QuestionType.input:
+                    if not isinstance(a, str) or (q.required and not a.strip()):
+                        raise HTTPException(status_code=422, detail=f"Invalid answer for '{q.id}'")
+                elif q.type == QuestionType.multiple_choice:
+                    if not isinstance(a, str) or a not in q.options:
+                        raise HTTPException(status_code=422, detail=f"Invalid choice for '{q.id}'")
+
+        # 4. Create application data
         app_data = {
             "first_name": first_name,
             "last_name": last_name,
             "email": email,
-            "team": UUID(team_id),
+            "team": team_uuid,
             "year": AppYear(year),
             "major": major,
             "resume": resume_url,
-            "status": AppStatus.applied
+            "status": AppStatus.applied,
+            "metadata_json": {"answers": answers} if answers else None,
         }
         
-        # 4. Save to database
+        # 5. Save to database
         application = create_application(db, app_data)
         return application
         

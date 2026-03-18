@@ -43,10 +43,6 @@ class TeamApplicationBase(BaseModel):
         return self
 
 
-class TeamApplicationCreate(TeamApplicationBase):
-    pass
-
-
 class TeamApplicationUpdate(BaseModel):
     questions: Optional[List[Question]] = None
 
@@ -70,9 +66,6 @@ def pack_metadata(questions: List[Question]) -> Dict[str, Any]:
 
 
 def unpack_metadata(metadata_json: Dict[str, Any]) -> List[Question]:
-    """
-    Convert the stored JSON structure back into strongly typed Question models.
-    """
     raw_questions = (metadata_json or {}).get("questions", [])
     adapter: TypeAdapter[List[Question]] = TypeAdapter(List[Question])  # type: ignore[arg-type]
     return adapter.validate_python(raw_questions)

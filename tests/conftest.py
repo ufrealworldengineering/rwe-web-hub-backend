@@ -109,19 +109,27 @@ def client(db_session: Session) -> TestClient:
 def seeded_data(db_session: Session) -> dict:
     """
     Naive fake data dump for tests:
-    - users: president + member
-    - program
-    - team
+    - users: president + member + program_manager
+    - programs: one managed by program_manager, one by president
+    - teams: one in each program
+    - members: one in each team
     """
     import uuid
 
     from api.deps import hash_password
-    from db.models import Program, Team, User, UserRole
+    from db.models import Member, Program, Team, User, UserRole
 
     president = User(
         id=uuid.uuid4(),
         email="president@example.com",
         role=UserRole.president,
+        password_hash=hash_password("password123"),
+        is_active=True,
+    )
+    program_manager = User(
+        id=uuid.uuid4(),
+        email="pm@example.com",
+        role=UserRole.program_manager,
         password_hash=hash_password("password123"),
         is_active=True,
     )
@@ -132,13 +140,50 @@ def seeded_data(db_session: Session) -> dict:
         password_hash=hash_password("password123"),
         is_active=True,
     )
-    program = Program(id=uuid.uuid4(), name="Test Program", manager=president.id, active=True)
-    team = Team(id=uuid.uuid4(), name="Test Team", program=program.id, active=True)
+    pm_program = Program(id=uuid.uuid4(), name="PM Program", manager=program_manager.id, active=True)
+    pres_program = Program(id=uuid.uuid4(), name="President Program", manager=president.id, active=True)
+    pm_team = Team(id=uuid.uuid4(), name="PM Team", program=pm_program.id, active=True)
+    pres_team = Team(id=uuid.uuid4(), name="President Team", program=pres_program.id, active=True)
+    pm_team.application_template = {
+        "questions": [
+            {
+                "id": "year",
+                "question": "What year are you in?",
+                "type": "multiple_choice",
+                "required": True,
+                "options": ["first", "second", "third", "fourth", "other"],
+            },
+            {"id": "why_join", "question": "Why join RWE?", "type": "input", "required": True},
+            {
+                "id": "background",
+                "question": "Explain your background and experience",
+                "type": "input",
+                "required": True,
+            },
+        ]
+    }
+    pm_member = Member(id=uuid.uuid4(), team=pm_team.id, first_name="PM", last_name="Member", email="pm.member@example.com")
+    pres_member = Member(id=uuid.uuid4(), team=pres_team.id, first_name="Pres", last_name="Member", email="pres.member@example.com")
 
-    db_session.add_all([president, member, program, team])
+    db_session.add_all(
+        [president, program_manager, member, pm_program, pres_program, pm_team, pres_team, pm_member, pres_member]
+    )
     db_session.commit()
 
-    return {"president": president, "member": member, "program": program, "team": team}
+    return {
+        "president": president,
+        "program_manager": program_manager,
+        "member": member,
+        "pm_program": pm_program,
+        "pres_program": pres_program,
+        "pm_team": pm_team,
+        "pres_team": pres_team,
+        "pm_member": pm_member,
+        "pres_member": pres_member,
+        # Backwards compat for older tests that assume one program/team exist.
+        "program": pm_program,
+        "team": pm_team,
+    }
 
 
 def auth_header_for_email(email: str) -> dict:
