@@ -69,8 +69,7 @@ async def apply_to_team(
     """
     try:
         # 1. Validate and capture template answers (if configured for team)
-        team_uuid = UUID(team_id)
-        team = db.query(Team).filter(Team.id == team_uuid).first()
+        team = db.query(Team).filter(Team.name == team_id).first()
         if not team:
             raise HTTPException(status_code=404, detail="Team not found")
 
@@ -114,7 +113,7 @@ async def apply_to_team(
             "first_name": first_name,
             "last_name": last_name,
             "email": email,
-            "team": team_uuid,
+            "team": team_id,
             "year": AppYear(year),
             "major": major,
             "resume": resume_url,
