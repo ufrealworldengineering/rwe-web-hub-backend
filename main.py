@@ -5,6 +5,7 @@ from api.routes.teams.routes import router as teamRouter
 from api.routes.programs.routes import router as programRouter
 from api.routes.users.routes import router as userRouter
 from api.routes.auth.routes import router as authRouter
+from api.routes.notify.routes import router as notifyRouter
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
@@ -32,6 +33,7 @@ app.include_router(memberRouter, prefix="/api")
 app.include_router(teamRouter, prefix="/api")
 app.include_router(programRouter, prefix="/api")
 app.include_router(authRouter, prefix="/api")
+app.include_router(notifyRouter, prefix="/api")
 
 @app.get("/")
 def root():
