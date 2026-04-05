@@ -16,7 +16,7 @@ async def notify_applicant(
     db: Session = Depends(get_db),
 ):
     """Send an acceptance or rejection email to a single applicant."""
-    application = await send_notification(payload.application_id, db)
+    application = await send_notification(payload.application_id, db, force=True)
     return {
         "success": True,
         "application_id": str(application.id),
@@ -40,7 +40,7 @@ async def notify_applicants_bulk(
 
     for app_id in payload.application_ids:
         try:
-            application = await send_notification(app_id, db)
+            application = await send_notification(app_id, db, force=True)
             succeeded.append(str(application.id))
         except Exception as e:
             failed.append({"application_id": str(app_id), "error": str(e)})

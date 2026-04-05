@@ -15,6 +15,7 @@ from api.schemas.schemas import (
     AppYear,
     ResumeUploadResponse
 )
+from . import service as application_service
 from .service import *
 from db.models import Application
 from db.storage import upload_resume
@@ -23,6 +24,7 @@ from api.routes.team_applications.schemas import unpack_metadata, QuestionType
 
 from api.deps import require_roles
 from db.models import UserRole, User
+from api.routes.notify.service import send_notification
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
@@ -205,7 +207,7 @@ def get_application(
     db: Session = Depends(get_db)
 ):
     """Get a specific application by ID"""
-    application = get_application(db, application_id, include_team=include_team)
+    application = application_service.get_application(db, application_id, include_team=include_team)
     if not application:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -222,7 +224,7 @@ def update_application(
 ):
     """Update an application"""
     update_data = application_update.model_dump(exclude_unset=True)
-    application = update_application(db, application_id, update_data)
+    application = application_service.update_application(db, application_id, update_data)
     if not application:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -231,20 +233,24 @@ def update_application(
     return application
 
 @router.patch("/{application_id}/status", response_model=ApplicationResponse)
-def update_application_status(
+async def update_application_status(
     application_id: UUID,
     status: AppStatus = Body(..., embed=True),
     notified: bool = Body(False, embed=True),
+    send_email: bool = Body(False, embed=True),
     current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     db: Session = Depends(get_db)
 ):
-    """Update application status and notification flag"""
-    application = update_application_status(db, application_id, status, notified)
+    """Update application status. Decision emails are sent via POST /api/notify unless ``send_email`` is true."""
+    application = application_service.update_application_status(db, application_id, status, notified)
     if not application:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Application not found"
         )
+    if send_email and status in (AppStatus.accepted, AppStatus.denied):
+        db.expire_all()
+        application = await send_notification(application_id, db, force=False)
     return application
 
 @router.delete("/{application_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -254,7 +260,7 @@ def delete_application(
     db: Session = Depends(get_db)
 ):
     """Delete an application"""
-    success = delete_application(db, application_id)
+    success = application_service.delete_application(db, application_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -273,7 +279,7 @@ def mark_applications_notified(
     db: Session = Depends(get_db)
 ):
     """Mark multiple applications as notified"""
-    count = mark_applications_notified(db, application_ids)
+    count = application_service.mark_applications_notified(db, application_ids)
     return {"updated": count, "application_ids": application_ids}
 
 @router.post("/bulk-update-status")

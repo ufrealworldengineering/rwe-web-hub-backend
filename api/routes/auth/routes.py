@@ -6,7 +6,7 @@ api.routes.auth.router
 """
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -20,9 +20,9 @@ from api.core.security import (
     get_current_active_user,
     verify_token,
 )
-from .service import authenticate_user, register_preentered_user
+from .service import authenticate_user, register_preentered_user, get_account_status
 from db.models import User
-from .schemas import Token, AccessToken, RefreshRequest, UserRegister
+from .schemas import Token, AccessToken, RefreshRequest, UserRegister, AccountStatusResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -79,3 +79,11 @@ def register(
 ):
     """Allows a pre-entered user to set their password and activate their account."""
     return register_preentered_user(db, registration_data)
+
+@router.get("/account-status", response_model=AccountStatusResponse)
+def account_status(
+    email: str = Query(..., min_length=3),
+    db: Session = Depends(get_db),
+):
+    status = get_account_status(db, email)
+    return AccountStatusResponse(**status)

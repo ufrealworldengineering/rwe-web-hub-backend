@@ -88,7 +88,7 @@ class TeamResponse(TeamBase):
     model_config = ConfigDict(from_attributes=True)
 
 class TeamWithProgram(TeamResponse):
-    program_rel: Optional[ProgramResponse] = None
+    program_rel: Optional[ProgramWithManager] = None
     model_config = ConfigDict(from_attributes=True)
 
 # --- Member Schemas ---
@@ -112,7 +112,7 @@ class MemberResponse(MemberBase):
     model_config = ConfigDict(from_attributes=True)
 
 class MemberWithTeam(MemberResponse):
-    team_rel: Optional[TeamResponse] = None
+    team_rel: Optional[TeamWithProgram] = None
     model_config = ConfigDict(from_attributes=True)
 
 # --- Application Schemas ---

@@ -12,11 +12,12 @@ from db.models import UserRole, User
 
 router = APIRouter(prefix="/members", tags=["members"])
 
-@router.get("/", response_model=List[MemberResponse])
+@router.get("/", response_model=List[MemberWithTeam])
 def list_members(
     current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer, UserRole.program_manager])),
     skip: int = 0,
     limit: int = 100,
+    include_team: bool = Query(True, description="Include nested team and program manager"),
     db: Session = Depends(get_db)
 ):
     """Get all members"""
@@ -24,6 +25,7 @@ def list_members(
         db,
         skip=skip,
         limit=limit,
+        include_team=include_team,
         program_manager_user_id=current_user.id if current_user.role == UserRole.program_manager else None,
     )
     return members

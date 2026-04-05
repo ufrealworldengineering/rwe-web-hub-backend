@@ -9,8 +9,8 @@ python -m venv .venv # or python3 or py
 2. 
 ```
 source .venv/bin/activate # for macOS and linux
-.venv\Scripts\activate.bat # for windows cmd
-.venv\Scripts\Activate.ps1 # for windows powershell
+.venv\Scripts\activate # for windows cmd
+.venv\Scripts\Activate # for windows powershell
 ```
 ### Install requirements
 ```

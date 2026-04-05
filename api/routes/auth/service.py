@@ -41,3 +41,15 @@ def register_preentered_user(db: Session, registration_data: UserRegister) -> Us
     db.commit()
     db.refresh(user)
     return user
+
+def get_account_status(db: Session, email: str) -> dict:
+    normalized_email = email.strip().lower()
+    user = db.query(User).filter(User.email == normalized_email).first()
+
+    if user is None:
+        return {"exists": False, "can_set_password": False}
+
+    # Assumes pre-entered invited users are inactive until password set.
+    # Adjust if your model uses a different field for "has password".
+    can_set_password = not user.is_active
+    return {"exists": True, "can_set_password": can_set_password}

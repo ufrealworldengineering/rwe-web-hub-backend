@@ -26,7 +26,11 @@ def get_members(
     query = db.query(Member)
     
     if include_team:
-        query = query.options(joinedload(Member.team_rel))
+        query = query.options(
+            joinedload(Member.team_rel)
+            .joinedload(Team.program_rel)
+            .joinedload(Program.manager_rel)
+        )
 
     if program_manager_user_id is not None:
         query = (

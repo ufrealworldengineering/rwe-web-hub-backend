@@ -6,9 +6,9 @@ from email.mime.text import MIMEText
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from db.models import Application, AppStatus
+from db.models import Application, AppStatus, Team, Program
 
 
 # ---------------------------------------------------------------------------
@@ -75,14 +75,32 @@ def _send_smtp(to_email: str, subject: str, body: str) -> None:
         server.sendmail(email_from, to_email, msg.as_string())
 
 
-async def send_notification(application_id: UUID, db: Session) -> Application:
+async def send_notification(
+    application_id: UUID, db: Session, *, force: bool = False
+) -> Application:
     """
     Look up the application, send the acceptance/rejection email,
     mark notified=True, and return the updated application.
+
+    When ``force`` is False and the row is already ``notified``, returns without
+    sending (idempotent path for status updates). Use ``force=True`` for explicit
+    resend via POST /notify.
     """
-    application = db.query(Application).filter(Application.id == application_id).first()
+    application = (
+        db.query(Application)
+        .options(
+            joinedload(Application.team_rel).joinedload(Team.program_rel).joinedload(
+                Program.manager_rel
+            )
+        )
+        .filter(Application.id == application_id)
+        .first()
+    )
     if not application:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+
+    if application.notified and not force:
+        return application
 
     if application.status not in (AppStatus.accepted, AppStatus.denied):
         raise HTTPException(
