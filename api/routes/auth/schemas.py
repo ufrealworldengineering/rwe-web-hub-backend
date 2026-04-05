@@ -17,3 +17,8 @@ class AccessToken(BaseModel):
 class UserRegister(BaseModel):
     email: EmailStr
     password: str  
+
+
+class AccountStatusResponse(BaseModel):
+    exists: bool
+    can_set_password: bool

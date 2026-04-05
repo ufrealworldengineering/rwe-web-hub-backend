@@ -12,6 +12,23 @@ from api.routes.team_applications.service import delete_for_team, get_template_f
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
+
+@router.get("/directory", response_model=List[TeamWithProgram])
+def list_teams_public(
+    active_only: bool = Query(True, description="Only return active teams"),
+    db: Session = Depends(get_db),
+):
+    """Public read-only list of teams (for the marketing site)."""
+    return team_service.get_teams(
+        db,
+        skip=0,
+        limit=500,
+        active_only=active_only,
+        include_program=True,
+        manager_user=None,
+    )
+
+
 @router.get("/", response_model=List[TeamResponse])
 def list_teams(
     current_user: User = Depends(require_roles([UserRole.president, UserRole.treasurer, UserRole.program_manager])),

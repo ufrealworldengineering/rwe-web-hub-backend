@@ -94,14 +94,18 @@ def update_application_status(
     status: AppStatus,
     notified: bool = False
 ) -> Optional[Application]:
-    """Update application status"""
+    """Update application status. If the decision status changes, clear ``notified`` so a new email can be sent."""
     db_application = get_application(db, application_id)
     if not db_application:
         return None
-    
+
+    old_status = db_application.status
     db_application.status = status
-    db_application.notified = notified
-    
+    if old_status != status:
+        db_application.notified = False
+    else:
+        db_application.notified = notified
+
     db.commit()
     db.refresh(db_application)
     return db_application
