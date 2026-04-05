@@ -150,3 +150,7 @@ class ApplicationResponse(ApplicationBase):
 class ApplicationWithTeam(ApplicationResponse):
     team_rel: Optional[TeamResponse] = None
     model_config = ConfigDict(from_attributes=True)
+
+# --- Resume Upload Schemas ---
+class ResumeUploadResponse(BaseModel):
+    resume_url: str

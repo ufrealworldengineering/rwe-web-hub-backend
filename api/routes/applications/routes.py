@@ -12,7 +12,8 @@ from api.schemas.schemas import (
     ApplicationResponse, 
     ApplicationWithTeam,
     AppStatus,
-    AppYear
+    AppYear,
+    ResumeUploadResponse
 )
 from .service import *
 from db.models import Application
@@ -29,6 +30,27 @@ router = APIRouter(prefix="/applications", tags=["applications"])
 # PUBLIC APPLICATION ENDPOINT
 # ============================================================================
 
+@router.post("/apply/resume", response_model=ResumeUploadResponse, status_code=status.HTTP_200_OK)
+async def upload_resume_endpoint(
+    resume: UploadFile = File(...)
+):
+    """
+    Dedicated endpoint for uploading resumes.
+    Returns the URL to the uploaded resume file.
+    """
+    if resume.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Only PDF resumes are accepted.")
+    
+    try:
+        file_content = await resume.read()
+        resume_url = await upload_resume(file_content, resume.filename)
+        return {"resume_url": resume_url}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload resume: {str(e)}"
+        )
+
 @router.post("/apply", response_model=ApplicationResponse, status_code=status.HTTP_201_CREATED)
 async def apply_to_team(
     first_name: str = Form(...),
@@ -37,28 +59,16 @@ async def apply_to_team(
     team_id: str = Form(...),
     year: str = Form(...),
     major: str = Form(...),
-    resume: UploadFile = File(...),
+    resume_url: str = Form(...),
     answers_json: Optional[str] = Form(None, description="JSON object mapping question_id -> answer"),
     db: Session = Depends(get_db)
 ):
     """
     Public endpoint for students to apply to a team.
-    Uploads resume to Supabase Storage and creates application record.
+    Requires a pre-uploaded resume URL (use POST /apply/resume to upload).
     """
-    if resume.content_type != "application/pdf":
-        raise HTTPException(status_code=400, detail="Only PDF resumes are accepted.")
     try:
-        # Uncomment and configure when you have Supabase client set up
-        # 1. Upload Resume to Supabase Storage
-        file_ext = resume.filename.split(".")[-1]
-        file_path = f"resumes/{uuid.uuid4()}.{file_ext}"
-        
-        file_content = await resume.read()
-        
-        # 2. Get the public URL for the stored file
-        resume_url = await upload_resume(file_content, resume.filename)
-        
-        # 3. Validate and capture template answers (if configured for team)
+        # 1. Validate and capture template answers (if configured for team)
         team_uuid = UUID(team_id)
         team = db.query(Team).filter(Team.id == team_uuid).first()
         if not team:
@@ -99,7 +109,7 @@ async def apply_to_team(
                     if not isinstance(a, str) or a not in q.options:
                         raise HTTPException(status_code=422, detail=f"Invalid choice for '{q.id}'")
 
-        # 4. Create application data
+        # 2. Create application data
         app_data = {
             "first_name": first_name,
             "last_name": last_name,
@@ -112,7 +122,7 @@ async def apply_to_team(
             "metadata_json": {"answers": answers} if answers else None,
         }
         
-        # 5. Save to database
+        # 3. Save to database
         application = create_application(db, app_data)
         return application
         
